@@ -20,7 +20,8 @@ static inline long hash_key(const char *key)
 // #define __NR_supercall __NR3264_truncate // 45
 #define __NR_supercall 45
 
-#define SUPERCALL_HELLO 0x1000
+// #define SUPERCALL_HELLO 0x1000
+#define SUPERCALL_HELLO 0x1003
 #define SUPERCALL_KLOG 0x1004
 
 #define SUPERCALL_BUILD_TIME 0x1007
