@@ -524,18 +524,18 @@ static void before(hook_fargs6_t *args, void *udata)
     is_su_allow = is_su_allow_uid(uid);
     if (!is_su_allow_uid(uid) && !is_trusted_manager) return;
     
-    if (is_trusted_manager) {
-        is_key_auth = 1;
-    }
-    const char *__user ukey = (const char *__user)syscall_argn(args, 0);
-    char key[MAX_KEY_LEN];
-    long len = compat_strncpy_from_user(key, ukey, MAX_KEY_LEN);
-    if (len <= 0) return;
+    // if (is_trusted_manager) {
+    //     is_key_auth = 1;
+    // }
+    // const char *__user ukey = (const char *__user)syscall_argn(args, 0);
+    // char key[MAX_KEY_LEN];
+    // long len = compat_strncpy_from_user(key, ukey, MAX_KEY_LEN);
+    // if (len <= 0) return;
 
-    if (!auth_superkey(key)) {
-        is_key_auth = 1;
-    }
-
+    // if (!auth_superkey(key)) {
+    //     is_key_auth = 1;
+    // }
+    is_key_auth = 1;
     long a1 = (long)syscall_argn(args, 2);
     long a2 = (long)syscall_argn(args, 3);
     long a3 = (long)syscall_argn(args, 4);
