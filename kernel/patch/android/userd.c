@@ -98,9 +98,10 @@ static const struct trusted_manager_entry trusted_managers[] = {
             0x6a, 0x7b, 0xca, 0xea, 0x94, 0x9c, 0xde, 0x43,
             0xc8, 0x12, 0xef, 0x26, 0xc7, 0x7d, 0xe8, 0x12
         },
-        "bin.liz.winter",{
-            0
-        }
+    },
+    {
+        "bin.liz.winter",
+        {0}
     },
     { "", { 0 } }
 };
