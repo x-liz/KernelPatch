@@ -93,11 +93,11 @@ static void before_rest_init(hook_fargs4_t *args, void *udata)
     rc = resolve_pt_regs();
     log_boot("resolve_pt_regs done: %d\n", rc);
 
-    rc = pathhide_init();
-    log_boot("pathhide_init done: %d\n", rc);
+    // rc = pathhide_init();
+    // log_boot("pathhide_init done: %d\n", rc);
 
-    rc = netisolate_init();
-    log_boot("netisolate_init done: %d\n", rc);
+    // rc = netisolate_init();
+    // log_boot("netisolate_init done: %d\n", rc);
 
 #ifdef ANDROID
     rc = android_sepolicy_flags_fix();
