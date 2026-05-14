@@ -514,27 +514,34 @@ static void before(hook_fargs6_t *args, void *udata)
 {
     // 获取用户传入的 key 字符串指针（从 syscall 参数 0）
     const char *__user ukey = (const char *__user)syscall_argn(args, 0);
+
     // 获取用户传入的 supercall 命令参数（参数 1）
     long ver_xx_cmd = (long)syscall_argn(args, 1);
+
     // 取低 16 位作为真正的命令号
     long cmd = ver_xx_cmd & 0xFFFF;
 
-    pr_info("before: syscall cmd=0x%lx\n", cmd);
+    // supercall 调试日志
+    pr_info("supercall before: enter syscall handler\n");
+    pr_info("supercall before: raw ver_xx_cmd=0x%lx\n", ver_xx_cmd);
+    pr_info("supercall before: parsed cmd=0x%lx\n", cmd);
 
     // 如果命令不在合法范围内则直接返回
     if (cmd < SUPERCALL_HELLO || cmd > SUPERCALL_MAX) {
-        pr_info("before: cmd out of range, skip\n");
+        pr_info("supercall before: cmd out of range, skip\n");
         return;
     }
 
     // 从用户空间复制 key
     char key[MAX_KEY_LEN];
     long len = compat_strncpy_from_user(key, ukey, MAX_KEY_LEN);
+
     if (len <= 0) {
-        pr_info("before: failed to copy key from user, len=%ld\n", len);
+        pr_info("supercall before: failed to copy key from user, len=%ld\n", len);
         return;
     }
-    pr_info("before: copied key='%s', len=%ld\n", key, len);
+
+    pr_info("supercall before: copied key='%s', len=%ld\n", key, len);
 
     // 授权状态标记
     int is_key_auth = 0;
@@ -542,47 +549,66 @@ static void before(hook_fargs6_t *args, void *udata)
 
     // 检查当前 uid 是否是受信任的管理者
     is_trusted_manager = is_trusted_manager_uid(current_uid());
-    pr_info("before: current uid=%u, is_trusted_manager=%d\n",
+
+    pr_info("supercall before: current uid=%u, trusted_manager=%d\n",
             current_uid(), is_trusted_manager);
 
+    // trusted manager 自动授权
     if (is_trusted_manager) {
         is_key_auth = 1;
-        pr_info("before: trusted manager, key auth automatically granted\n");
+        pr_info("supercall before: trusted manager auto auth granted\n");
     }
 
-    // 进行 key 授权校验
+    // superkey 校验
     if (!auth_superkey(key)) {
+
         is_key_auth = 1;
-        pr_info("before: superkey auth passed\n");
+
+        pr_info("supercall before: superkey auth success\n");
+
     } else if (!strcmp("su", key)) {
+
         uid_t uid = current_uid();
+
+        // 检查 su uid 是否允许
         if (!is_su_allow_uid(uid) && !is_trusted_manager) {
-            pr_info("before: 'su' key denied for uid=%u\n", uid);
+
+            pr_info("supercall before: su denied for uid=%u\n", uid);
+
             return;
         }
-        pr_info("before: 'su' key allowed for uid=%u\n", uid);
+
+        pr_info("supercall before: su allowed for uid=%u\n", uid);
+
     } else {
+
+        // 普通 key 只能 trusted manager 使用
         if (!is_trusted_manager) {
-            pr_info("before: key '%s' denied, not trusted manager\n", key);
+
+            pr_info("supercall before: key '%s' denied\n", key);
+
             return;
         }
     }
 
-    // 获取剩余 syscall 参数 a1-a4
+    // 获取剩余 syscall 参数
     long a1 = (long)syscall_argn(args, 2);
     long a2 = (long)syscall_argn(args, 3);
     long a3 = (long)syscall_argn(args, 4);
     long a4 = (long)syscall_argn(args, 5);
 
-    pr_info("before: calling supercall with args: %lx %lx %lx %lx\n",
+    pr_info("supercall before: args=%lx %lx %lx %lx\n",
             a1, a2, a3, a4);
 
-    // 跳过原始 syscall 调用
+    // 跳过原始 syscall
     args->skip_origin = 1;
-    // 调用内核 supercall
+
+    pr_info("supercall before: skip original syscall\n");
+
+    // 调用 supercall
     args->ret = supercall(is_key_auth, cmd, a1, a2, a3, a4);
 
-    pr_info("before: supercall returned %ld\n", args->ret);
+    pr_info("supercall before: supercall return=%ld\n", args->ret);
 }
 
 int supercall_install()
