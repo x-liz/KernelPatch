@@ -32,6 +32,7 @@
 #include <accctl.h>
 #include <kstorage.h>
 #include <linux/vmalloc.h>
+#include <linux/printk.h>
 #ifdef ANDROID
 #include <userd.h>
 #endif
@@ -522,7 +523,9 @@ static void before(hook_fargs6_t *args, void *udata)
     int is_su_allow = 0;
     is_trusted_manager = is_trusted_manager_uid(uid);
     is_su_allow = is_su_allow_uid(uid);
-    if (!is_su_allow_uid(uid) && !is_trusted_manager) return;
+    if (!is_su_allow_uid(uid) && !is_trusted_manager) {
+        pr_info("supercall uid:%d",uid);
+    };
     
     // if (is_trusted_manager) {
     //     is_key_auth = 1;
