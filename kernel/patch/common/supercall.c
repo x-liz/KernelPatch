@@ -33,6 +33,7 @@
 #include <kstorage.h>
 #include <linux/vmalloc.h>
 #include <linux/printk.h>
+#include "selinux_hide.h"
 #ifdef ANDROID
 #include <userd.h>
 #endif
@@ -434,6 +435,12 @@ static long supercall(int is_key_auth, long cmd, long arg1, long arg2, long arg3
                             (const char __user *)arg2);
     case SUPERCALL_UTS_RESET:
         return call_uts_reset();
+    }
+    switch (cmd){
+        case SUPERCALL_SELinux_Enable:
+            return selinux_hide_enable();
+        case SUPERCALL_SELinux_Disable:
+            return selinux_hide_disable();
     }
 
     switch (cmd) {
