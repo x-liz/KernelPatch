@@ -552,12 +552,12 @@ int supercall_install()
 {
     int rc = 0;
 
-    hook_err_t err = hook_syscalln(__NR_supercall, 6, before, 0, 0);
-    if (err) {
-        log_boot("install supercall hook error: %d\n", err);
-        rc = err;
-        goto out;
-    }
+    // hook_err_t err = hook_syscalln(__NR_supercall, 6, before, 0, 0);
+    // if (err) {
+    //     log_boot("install supercall hook error: %d\n", err);
+    //     rc = err;
+    //     goto out;
+    // }
 out:
     return rc;
 }
