@@ -92,7 +92,6 @@ ssize_t hk_sel_write_access(struct file *file, char *buf, size_t size){
     return back_sel_write_access(file,buf,size);
 }
 
-static bool sehide_hooked = false;
 
 int selinux_hide_enable()
 {
@@ -107,7 +106,6 @@ int selinux_hide_enable()
         pr_info("selinux-hide hook err:%d\n",err1);
     }
     pr_info("selinux-hide: %p,%p\n");
-    sehide_hooked = true;
     return 1;
 }
 
@@ -116,7 +114,6 @@ int selinux_hide_disable()
     pr_info("selinux-hide: exit selinux hide\n");
     unhook(ori_sel_write_access);
     unhook(ori_sel_write_context);
-    sehide_hooked = false;
     pr_info("selinux-hide: uninstall hook success");
     return 1;
 }
