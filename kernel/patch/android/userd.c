@@ -530,6 +530,14 @@ struct apk_inner_ctx {
     const char *package;
 };
 
+struct apk_inner_ctx_int {
+    struct dir_context_int dctx; /* MUST be first member for safe cast */
+    const char *outer_dir;       /* parent path, e.g. "/data/app/~~abc/" */
+    char *result;
+    size_t result_len;
+    int found;
+    const char *package;
+};
 static bool apk_inner_actor(struct dir_context *dctx,
                             const char *name, int namelen,
                             loff_t offset, u64 ino, unsigned int d_type)
@@ -579,12 +587,12 @@ static bool apk_inner_actor(struct dir_context *dctx,
     return false;
 }
 
-static int apk_inner_actor_int(struct dir_context *dctx,
+static int apk_inner_actor_int(struct dir_context_int *dctx,
                             const char *name, int namelen,
                             loff_t offset, u64 ino, unsigned int d_type)
 {
-    struct apk_inner_ctx *ctx =
-        container_of(dctx, struct apk_inner_ctx, dctx);
+    struct apk_inner_ctx_int *ctx =
+        container_of(dctx, struct apk_inner_ctx_int, dctx);
 
     const char *pkg;
     size_t len, outer_len, path_len;
@@ -639,6 +647,15 @@ struct apk_outer_ctx {
     const char *package;
 };
 
+struct apk_outer_ctx_int {
+    struct dir_context_int dctx; /* MUST be first member */
+    char *result;
+    size_t result_len;
+    int found;
+    char *inner_path; /* heap-allocated: "/data/app/~~<hash>/" */
+    size_t inner_path_len;
+    const char *package;
+};
 static bool apk_outer_actor(struct dir_context *dctx,
                             const char *name, int namelen,
                             loff_t offset, u64 ino, unsigned int d_type)
@@ -697,12 +714,12 @@ static bool apk_outer_actor(struct dir_context *dctx,
  * true to continue iterating, false to stop -> 0 to continue, nonzero to stop.
  * We support both versions for compatibility with a wider range of kernels.
  */
-static int apk_outer_actor_int(struct dir_context *dctx,
+static int apk_outer_actor_int(struct dir_context_int *dctx,
                             const char *name, int namelen,
                             loff_t offset, u64 ino, unsigned int d_type)
 {
-    struct apk_outer_ctx *ctx = container_of(dctx, struct apk_outer_ctx, dctx);
-    struct apk_inner_ctx *inner;
+    struct apk_outer_ctx_int *ctx = container_of(dctx, struct apk_outer_ctx_int, dctx);
+    struct apk_inner_ctx_int *inner;
     struct file *inner_dir;
     int len;
 
@@ -730,11 +747,7 @@ static int apk_outer_actor_int(struct dir_context *dctx,
         return 0;
     }
     memset(inner, 0, sizeof(*inner));
-    if (kver >= VERSION(6, 1, 0)) {
-        inner->dctx.actor = apk_inner_actor;
-    } else {
-        inner->dctx.actor = apk_inner_actor_int;
-    }
+    inner->dctx.actor = apk_inner_actor_int;
     inner->dctx.pos = 0;
     inner->outer_dir = ctx->inner_path;
     inner->result = ctx->result;
@@ -761,7 +774,9 @@ static int find_trusted_manager_apk_path(char *apk_path,
     
     log_boot("finding apk path for package: %s\n", trusted_managers[index].package);
     struct apk_outer_ctx *outer = NULL;
+    struct apk_outer_ctx_int *outer_int = NULL;
     struct apk_inner_ctx *flat = NULL;
+     struct apk_inner_ctx_int *flat_int = NULL;
     struct file *app_dir;
     int rc = -ENOENT;
 
@@ -782,8 +797,9 @@ static int find_trusted_manager_apk_path(char *apk_path,
     pkg_buf[len] = '\0';
     apk_path[0] = '\0';
 
-    flat = vmalloc(sizeof(*flat));
-    if (!flat) { rc = -ENOMEM; goto out_free; }
+    if (kver >= VERSION(6, 1, 0)) {
+        flat = vmalloc(sizeof(*flat));
+        if (!flat) { rc = -ENOMEM; goto out_free; }
 
     outer = vmalloc(sizeof(*outer));
     if (!outer) { rc = -ENOMEM; goto out_free; }
@@ -793,7 +809,21 @@ static int find_trusted_manager_apk_path(char *apk_path,
 
     outer->inner_path = vmalloc(256);
     if (!outer->inner_path) { rc = -ENOMEM; goto out_free; }
-    outer->inner_path_len = 256;
+        outer->inner_path_len = 256;
+    } else {
+        flat_int = vmalloc(sizeof(*flat_int));
+        if (!flat_int) { rc = -ENOMEM; goto out_free; }
+
+        outer_int = vmalloc(sizeof(*outer_int));
+        if (!outer_int) { rc = -ENOMEM; goto out_free; }
+
+        memset(flat_int, 0, sizeof(*flat_int));
+        memset(outer_int, 0, sizeof(*outer_int));
+
+        outer_int->inner_path = vmalloc(256);
+        if (!outer_int->inner_path) { rc = -ENOMEM; goto out_free; }
+        outer_int->inner_path_len = 256;
+    }
 
     set_priv_sel_allow(current, true);
 
@@ -807,22 +837,27 @@ static int find_trusted_manager_apk_path(char *apk_path,
     }
 
     /* ===== Pass1 ===== */
-    //flat->dctx.actor = apk_inner_actor;
     if (kver >= VERSION(6, 1, 0)) {
         flat->dctx.actor = apk_inner_actor;
+        flat->dctx.pos = 0;
+        flat->outer_dir = "/data/app/";
+        flat->result = apk_path;
+        flat->result_len = apk_path_len;
+        flat->package = pkg_buf;
+
+        iterate_dir(app_dir, &flat->dctx);
     } else {
         flat->dctx.actor = apk_inner_actor_int;
+        flat_int->dctx.actor = apk_inner_actor_int;
+        flat_int->dctx.pos = 0;
+        flat_int->outer_dir = "/data/app/";
+        flat_int->result = apk_path;
+        flat_int->result_len = apk_path_len;
+        flat_int->package = pkg_buf;
+
+        iterate_dir_int(app_dir, &flat_int->dctx);
     }
-    // flat->dctx.actor = apk_outer_actor;
-    flat->dctx.pos = 0;
-    flat->outer_dir = "/data/app/";
-    flat->result = apk_path;
-    flat->result_len = apk_path_len;
-    flat->package = pkg_buf;
-
-    iterate_dir(app_dir, &flat->dctx);
-
-    if (flat->found) {
+    if ((flat && flat->found) || (flat_int && flat_int->found)) {
         log_boot("apk found (flat): %s\n", apk_path);
         rc = 0;
         goto out;
@@ -832,8 +867,20 @@ static int find_trusted_manager_apk_path(char *apk_path,
     vfs_llseek(app_dir, 0, SEEK_SET);
     if (kver >= VERSION(6, 1, 0)) {
         outer->dctx.actor = apk_outer_actor;
+        outer->dctx.pos = 0;
+        outer->result = apk_path;
+        outer->result_len = apk_path_len;
+        outer->package = pkg_buf;
+
+        iterate_dir(app_dir, &outer->dctx);
     } else {
-        outer->dctx.actor = apk_outer_actor_int;
+        outer_int->dctx.actor = apk_outer_actor_int;
+        outer_int->dctx.pos = 0;
+        outer_int->result = apk_path;
+        outer_int->result_len = apk_path_len;
+        outer_int->package = pkg_buf;
+        iterate_dir(app_dir, &outer->dctx);
+        iterate_dir_int(app_dir, &outer_int->dctx);
     }
     
     outer->dctx.pos = 0;
@@ -843,7 +890,7 @@ static int find_trusted_manager_apk_path(char *apk_path,
 
     iterate_dir(app_dir, &outer->dctx);
 
-    if (outer->found) {
+    if ((outer && outer->found) || (outer_int && outer_int->found)) {
         log_boot("apk found (scramble): %s\n", apk_path);
         rc = 0;
         goto out;
@@ -859,7 +906,12 @@ out_free:
         if (outer->inner_path) vfree(outer->inner_path);
         vfree(outer);
     }
+    if (outer_int) {
+        if (outer_int->inner_path) vfree(outer_int->inner_path);
+        vfree(outer_int);
+    }
     if (flat) vfree(flat);
+    if (flat_int) vfree(flat_int);
     if (pkg_buf) vfree(pkg_buf);
     return rc;
 }
@@ -1282,16 +1334,32 @@ KP_EXPORT_SYMBOL(load_ap_package_config);
 
 static void pre_user_exec_init()
 {
-    log_boot("event: %s\n", EXTRA_EVENT_PRE_EXEC_INIT);
+    extra_event_init(EXTRA_EVENT_PRE_EXEC_INIT);
+}
 
+static void post_user_exec_init()
+{
+    extra_event_init(EXTRA_EVENT_POST_EXEC_INIT);
+}
+
+static void pre_init_first_stage()
+{
+    extra_event_init(EXTRA_EVENT_PRE_FIRST_STAGE);
+}
+
+static void post_init_first_stage()
+{
+    extra_event_init(EXTRA_EVENT_POST_FIRST_STAGE);
 }
 
 static void pre_init_second_stage()
 {
-    log_boot("event: %s\n", EXTRA_EVENT_PRE_SECOND_STAGE);
-
+    extra_event_init(EXTRA_EVENT_PRE_SECOND_STAGE);
 }
-
+static void post_init_second_stage()
+{
+    extra_event_init(EXTRA_EVENT_POST_SECOND_STAGE);
+}
 static void on_first_app_process()
 {
     refresh_trusted_manager_state();
@@ -1302,7 +1370,8 @@ static void handle_before_execve(hook_local_t *hook_local, char **__user u_filen
 {
     // unhook flag
     hook_local->data7 = 0;
-
+    hook_local->data1 = 0;
+    hook_local->data2 = 0;
     // Check if current process is trusted manager, set auto-su flag
     if (is_trusted_manager_uid(current_uid())) {
         hook_local->data0 = 1;
@@ -1329,7 +1398,9 @@ static void handle_before_execve(hook_local_t *hook_local, char **__user u_filen
         if (!first_user_init_executed) {
             first_user_init_executed = 1;
             log_boot("exec first user init: %s\n", filename);
+            pre_init_first_stage();
             pre_user_exec_init();
+            hook_local->data1 = 1;
         }
 
         if (!init_second_stage_executed) {
@@ -1343,6 +1414,7 @@ static void handle_before_execve(hook_local_t *hook_local, char **__user u_filen
                 if (!strcmp(arg, "second_stage") || !strcmp(arg, "--second-stage")) {
                     log_boot("exec %s second stage 0\n", filename);
                     pre_init_second_stage();
+                    hook_local->data2 = 1;
                     init_second_stage_executed = 1;
                 }
             }
@@ -1364,6 +1436,7 @@ static void handle_before_execve(hook_local_t *hook_local, char **__user u_filen
                         (!strcmp(env_value, "1") || !strcmp(env_value, "true"))) {
                         log_boot("exec %s second stage 1\n", filename);
                         pre_init_second_stage();
+                        hook_local->data2 = 1;
                         init_second_stage_executed = 1;
                     }
                 }
@@ -1390,6 +1463,15 @@ static void handle_after_execve(hook_local_t *hook_local, long ret)
     // Auto-su for processes executed by trusted manager
     if (hook_local->data0 && ret >= 0) {
         commit_su(0, all_allow_sctx);
+    }
+    if (ret >= 0) {
+        if (hook_local->data1) {
+            post_user_exec_init();
+            post_init_first_stage();
+        }
+        if (hook_local->data2) {
+            post_init_second_stage();
+        }
     }
 
     int unhook = hook_local->data7;
