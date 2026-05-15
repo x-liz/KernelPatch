@@ -92,9 +92,14 @@ ssize_t hk_sel_write_access(struct file *file, char *buf, size_t size){
     return back_sel_write_access(file,buf,size);
 }
 
+static bool sehide_hooked = false;
 
 int selinux_hide_enable()
 {
+    if(sehide_hooked){
+        pr_info("selinux-hide alread hook");
+        return 1;
+    }
     ori_sel_write_access = (void*)kallsyms_lookup_name("sel_write_access");
     ori_sel_write_context = (void*)kallsyms_lookup_name("sel_write_context");
     hook_err_t err = hook(ori_sel_write_access,hk_sel_write_access,(void**)&back_sel_write_access);
@@ -106,14 +111,19 @@ int selinux_hide_enable()
         pr_info("selinux-hide hook err:%d\n",err1);
     }
     pr_info("selinux-hide: %p,%p\n");
+    sehide_hooked = true;
     return 1;
 }
 
 int selinux_hide_disable()
 {
+    if(!sehide_hooked){
+        return 1;
+    }
     pr_info("selinux_hide: exit selinux hide\n");
     unhook(ori_sel_write_access);
     unhook(ori_sel_write_context);
+    sehide_hooked = false;
     pr_info("selinux_hide: uninstall hook success");
     return 1;
 }
