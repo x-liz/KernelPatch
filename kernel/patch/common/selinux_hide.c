@@ -112,6 +112,7 @@ int selinux_hide_enable()
 {
     ori_sel_write_access = (void*)kallsyms_lookup_name("sel_write_access");
     ori_sel_write_context = (void*)kallsyms_lookup_name("sel_write_context");
+    ori_selinux_setprocattr = (void*)kallsyms_lookup_name("selinux_setprocattr");
     hook_err_t err = hook(ori_sel_write_access,hk_sel_write_access,(void**)&back_sel_write_access);
     if(err){
         pr_info("selinux-hide hook err:%d\n",err);
