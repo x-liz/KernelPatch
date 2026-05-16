@@ -16,8 +16,11 @@ struct file{};
 
 typedef ssize_t (*sel_write_access)(struct file *file, char *buf, size_t size);
 typedef ssize_t (*sel_write_context)(struct file *file, char *buf, size_t size);
+typedef int (*selinux_setprocattr)(struct task_struct *p,char *name, void *value, size_t size);
 sel_write_access ori_sel_write_access,back_sel_write_access;
 sel_write_context ori_sel_write_context,back_sel_write_context;
+selinux_setprocattr ori_selinux_setprocattr,back_selinux_setprocattr;
+
 
 
 ssize_t hk_sel_write_context(struct file *file, char *buf, size_t size){
@@ -92,6 +95,18 @@ ssize_t hk_sel_write_access(struct file *file, char *buf, size_t size){
     return back_sel_write_access(file,buf,size);
 }
 
+int hk_selinux_setprocattr(struct task_struct *p,char *name, void *value, size_t size){
+    uid_t uid = current_uid();
+    if(uid < 10000){
+        return back_selinux_setprocattr(p,name,value,size);
+    }
+    if(strstr(name,"magisk")){
+        pr_info("selinux-hide-write: Found Magisk");
+        return -22;
+    }
+    pr_info("selinux-hide-write: %s",name);
+    return back_selinux_setprocattr(p,name,value,size);
+}
 
 int selinux_hide_enable()
 {
@@ -105,6 +120,10 @@ int selinux_hide_enable()
     if(err1){
         pr_info("selinux-hide hook err:%d\n",err1);
     }
+    hook_err_t err2 = hook(ori_selinux_setprocattr,hk_selinux_setprocattr,(void**)&back_selinux_setprocattr);
+    if(err2){
+        pr_info("selinux-hide hook err:%d\n",err2);
+    }
     pr_info("selinux-hide: %p,%p\n");
     return 1;
 }
@@ -114,6 +133,7 @@ int selinux_hide_disable()
     pr_info("selinux-hide: exit selinux hide\n");
     unhook(ori_sel_write_access);
     unhook(ori_sel_write_context);
+    unhook(ori_selinux_setprocattr);
     pr_info("selinux-hide: uninstall hook success");
     return 1;
 }
