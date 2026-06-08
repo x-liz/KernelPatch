@@ -535,7 +535,6 @@ static void before(hook_fargs6_t *args, void *udata)
 
     // 如果命令不在合法范围内则直接返回
     if (cmd < SUPERCALL_HELLO || cmd > SUPERCALL_MAX) {
-        pr_info("supercall before: cmd out of range, skip\n");
         return;
     }
     // 获取用户传入的 key 字符串指针（从 syscall 参数 0）
@@ -544,21 +543,16 @@ static void before(hook_fargs6_t *args, void *udata)
     char key[MAX_KEY_LEN];
     long len = compat_strncpy_from_user(key, ukey, MAX_KEY_LEN);
     if (len <= 0) {
-        pr_info("supercall before: failed to copy key from user, len=%ld\n", len);
         return;
     }
-    pr_info("supercall before: copied key='%s', len=%ld\n", key, len);
-    pr_info("supercall before: current uid=%u, trusted_manager=%d\n",current_uid(), is_trusted_manager);
     // trusted manager 自动授权
     if (is_trusted_manager) {
         is_key_auth = 1;
-        pr_info("supercall before: trusted manager auto auth granted\n");
     }
 
     // superkey 校验
     if (!auth_superkey(key)) {
         is_key_auth = 1;
-        pr_info("supercall before: superkey auth success\n");
     }
 
     // 获取剩余 syscall 参数

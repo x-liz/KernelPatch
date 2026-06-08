@@ -31,31 +31,23 @@ ssize_t hk_sel_write_context(struct file *file, char *buf, size_t size){
     }
     char tmp[64];
     if (strstr(buf, "magisk")) {
-        pr_info("selinux-hide: found MASGISK\n");
         return -22;
     }
     if (strstr(buf, "ksu")) {
-        pr_info("selinux-hide: found Kernelsu\n");
         return -22;
     }
     if(strstr(buf,"system_server") && strstr(buf,"2000000")){
-        pr_info("selinux-hide: found system can execmem\n");
         return -22;
     }
     if(strstr(buf,"lsposed")){
-        pr_info("selinux-hide: found LSPosed\n");
         return -22;
     }
     if(strstr(buf,"adb_data_file")){
-        pr_info("selinux-hide: found ZygiskNext\n");
         return -22;
     }
     if(strstr(buf,"fsck_untrusted")){
-        pr_info("selinux-hide: neverallow violated;\n");
         return -22;
     }
-
-    pr_info("selinux-hide context uid: %d buf: %s\n",uid,buf);
     // 默认允许
     return back_sel_write_context(file,buf,size);
 }
@@ -65,29 +57,22 @@ ssize_t hk_sel_write_access(struct file *file, char *buf, size_t size){
     if(uid < 10000){
         return back_sel_write_access(file,buf,size);
     }
-    pr_info("selinux-hide access uid: %d buf: %s\n",uid,buf);
     if (strstr(buf, "magisk")) {
-        pr_info("selinux-hide: found MASGISK\n");
         return -22;
     }
     if (strstr(buf, "ksu")) {
-        pr_info("selinux-hide: found Kernelsu\n");
         return -22;
     }
     if(strstr(buf,"system_server") && strstr(buf,"2000000")){
-        pr_info("selinux-hide: found system can execmem\n");
         return -22;
     }
     if(strstr(buf,"lsposed")){
-        pr_info("selinux-hide: found LSPosed\n");
         return -22;
     }
     if(strstr(buf,"adb_data_file")){
-        pr_info("selinux-hide: found ZygiskNext\n");
         return -22;
     }
     if(strstr(buf,"fsck_untrusted")){
-        pr_info("selinux-hide: neverallow violated;\n");
         return -22;
     }
     if(strstr(buf,"dex2oat_exec") && strstr(buf,"2000000")){
@@ -104,10 +89,8 @@ int hk_selinux_setprocattr(struct task_struct *p,char *name, void *value, size_t
         return back_selinux_setprocattr(p,name,value,size);
     }
     if(strstr(name,"magisk")){
-        pr_info("selinux-hide-write: Found Magisk");
         return -22;
     }
-    pr_info("selinux-hide-write: %s",name);
     return back_selinux_setprocattr(p,name,value,size);
 }
 
