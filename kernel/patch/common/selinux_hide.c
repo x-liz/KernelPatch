@@ -96,31 +96,31 @@ int hk_selinux_setprocattr(struct task_struct *p,char *name, void *value, size_t
 
 int selinux_hide_enable()
 {
-    ori_sel_write_access = (void*)kallsyms_lookup_name("sel_write_access");
-    ori_sel_write_context = (void*)kallsyms_lookup_name("sel_write_context");
-    ori_selinux_setprocattr = (void*)kallsyms_lookup_name("selinux_setprocattr");
-    hook_err_t err = hook(ori_sel_write_access,hk_sel_write_access,(void**)&back_sel_write_access);
-    if(err){
-        pr_info("selinux-hide hook err:%d\n",err);
-    }
-    hook_err_t err1 = hook(ori_sel_write_context,hk_sel_write_context,(void**)&back_sel_write_context);
-    if(err1){
-        pr_info("selinux-hide hook err:%d\n",err1);
-    }
-    hook_err_t err2 = hook(ori_selinux_setprocattr,hk_selinux_setprocattr,(void**)&back_selinux_setprocattr);
-    if(err2){
-        pr_info("selinux-hide hook err:%d\n",err2);
-    }
-    pr_info("selinux-hide: %p,%p\n");
+    // ori_sel_write_access = (void*)kallsyms_lookup_name("sel_write_access");
+    // ori_sel_write_context = (void*)kallsyms_lookup_name("sel_write_context");
+    // ori_selinux_setprocattr = (void*)kallsyms_lookup_name("selinux_setprocattr");
+    // hook_err_t err = hook(ori_sel_write_access,hk_sel_write_access,(void**)&back_sel_write_access);
+    // if(err){
+    //     pr_info("selinux-hide hook err:%d\n",err);
+    // }
+    // hook_err_t err1 = hook(ori_sel_write_context,hk_sel_write_context,(void**)&back_sel_write_context);
+    // if(err1){
+    //     pr_info("selinux-hide hook err:%d\n",err1);
+    // }
+    // hook_err_t err2 = hook(ori_selinux_setprocattr,hk_selinux_setprocattr,(void**)&back_selinux_setprocattr);
+    // if(err2){
+    //     pr_info("selinux-hide hook err:%d\n",err2);
+    // }
+    // pr_info("selinux-hide: %p,%p\n");
     return 1;
 }
 
 int selinux_hide_disable()
 {
-    pr_info("selinux-hide: exit selinux hide\n");
-    unhook(ori_sel_write_access);
-    unhook(ori_sel_write_context);
-    unhook(ori_selinux_setprocattr);
-    pr_info("selinux-hide: uninstall hook success");
+    // pr_info("selinux-hide: exit selinux hide\n");
+    // unhook(ori_sel_write_access);
+    // unhook(ori_sel_write_context);
+    // unhook(ori_selinux_setprocattr);
+    // pr_info("selinux-hide: uninstall hook success");
     return 1;
 }
