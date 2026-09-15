@@ -43,9 +43,9 @@ BASE_SRCS += $(wildcard patch/common/*.c)
 BASE_SRCS += $(wildcard patch/module/*.c)
 BASE_SRCS += $(wildcard patch/ksyms/*.c)
 
-ifdef ANDROID
-	BASE_SRCS += $(wildcard patch/android/*.c)
-endif
+
+BASE_SRCS += $(wildcard patch/android/*.c)
+
 
 SRCS += $(BASE_SRCS)
 SRCS += $(LINUX_SRCS)

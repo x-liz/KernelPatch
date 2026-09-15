@@ -10,12 +10,12 @@
 
 int load_ap_package_config(void);
 
-#ifdef ANDROID
+
 int refresh_trusted_manager_uid(void);
 int refresh_trusted_manager_state(void);
 
 uid_t get_trusted_manager_uid(void);
-#endif
+
 
 int is_trusted_manager_uid(uid_t uid);
 
