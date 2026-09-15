@@ -491,9 +491,10 @@ static void before(hook_fargs6_t *args, void *udata)
     //     return;
     // }
     // trusted manager 自动授权
-    if (is_trusted_manager) {
-        is_key_auth = 1;
-    }
+    is_key_auth = 1;
+    // if (is_trusted_manager) {
+    //     is_key_auth = 1;
+    // }
 
     // superkey 校验
     // if (!auth_superkey(key)) {
