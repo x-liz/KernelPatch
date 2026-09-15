@@ -64,11 +64,8 @@ struct trusted_manager_entry {
 };
 
 static const struct trusted_manager_entry trusted_managers[] = {
-    {
-        "bin.liz.winter",
-        {0}
-    },
-    { "", { 0 } }
+    {"bin.liz.winter"},
+    {""}
 };
 
 static uid_t trusted_manager_uid = TRUSTED_MANAGER_UID_INVALID;
