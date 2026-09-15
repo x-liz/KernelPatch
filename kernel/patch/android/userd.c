@@ -34,7 +34,6 @@
 #include <sucompat.h>
 #include <userd.h>
 #include <uapi/linux/limits.h>
-#include <sha256.h>
 #include <baselib.h>
 #include <ctype.h>
 #include <linux/compiler.h>
@@ -56,49 +55,15 @@
 #define AP_PACKAGE_CONFIG_PATH "/data/adb/ap/package_config"
 #define ANDROID_PACKAGES_LIST_PATH "/data/system/packages.list"
 #define ANDROID_PACKAGES_XML_PATH "/data/system/packages.xml"
-#define APK_SIG_BLOCK_MAGIC "APK Sig Block 42"
-#define APK_SIG_BLOCK_MAGIC_LEN 16
-#define APK_SIG_SCHEME_V2_BLOCK_ID 0x7109871au
-#define APK_SIG_SCHEME_V3_BLOCK_ID 0xf05368c0u
-#define APK_SIG_SCHEME_V31_BLOCK_ID 0x1b93ad61u
-#define APK_CERT_MAX_LENGTH 4096
 
-#define TRUSTED_MANAGER_DIGEST_LEN SHA256_BLOCK_SIZE
+
 #define TRUSTED_MANAGER_UID_INVALID ((uid_t)-1)
 
 struct trusted_manager_entry {
     const char package[64];
-    const uint8_t digest[TRUSTED_MANAGER_DIGEST_LEN];
 };
 
 static const struct trusted_manager_entry trusted_managers[] = {
-    {
-        "me.bmax.apatch",
-        {
-            0xd7, 0x1d, 0xad, 0xc0, 0xca, 0x07, 0xbd, 0xf5,
-            0x94, 0x38, 0x3b, 0xfb, 0x2a, 0x44, 0x51, 0x34,
-            0xa0, 0x73, 0x39, 0xf1, 0x2a, 0x27, 0x04, 0x4a,
-            0x1b, 0x32, 0x69, 0x81, 0xac, 0xf5, 0xf3, 0x19
-        }
-    },
-    {
-        "com.example.apatch",
-        {
-            0xe5, 0x11, 0x33, 0x12, 0x5f, 0xef, 0x56, 0xaa,
-            0x52, 0x83, 0x91, 0xfc, 0xc2, 0x04, 0x94, 0xeb,
-            0xb5, 0x38, 0xbd, 0x8e, 0x09, 0x3d, 0x6c, 0x47,
-            0x5d, 0x6d, 0x00, 0x2a, 0x7a, 0x12, 0x1a, 0x8f
-        }
-    },
-    {
-        "me.yuki.folk",
-        {
-            0xa9, 0xeb, 0xa5, 0xb7, 0x02, 0xeb, 0x55, 0xfb,
-            0x5f, 0x4b, 0x1a, 0x67, 0x2a, 0x71, 0x33, 0xa1,
-            0x6a, 0x7b, 0xca, 0xea, 0x94, 0x9c, 0xde, 0x43,
-            0xc8, 0x12, 0xef, 0x26, 0xc7, 0x7d, 0xe8, 0x12
-        },
-    },
     {
         "bin.liz.winter",
         {0}
@@ -184,249 +149,6 @@ static int path_is_exact(const char *path, const char *target)
     return path && target && strcmp(path, target) == 0;
 }
 
-static int read_le32(struct file *fp, loff_t *pos, uint32_t *out)
-{
-    return kernel_read(fp, out, sizeof(*out), pos) == sizeof(*out) ? 0 : -EIO;
-}
-
-static int read_le64(struct file *fp, loff_t *pos, uint64_t *out)
-{
-    return kernel_read(fp, out, sizeof(*out), pos) == sizeof(*out) ? 0 : -EIO;
-}
-
-static int skip_bytes(loff_t *pos, uint64_t len)
-{
-    *pos += (loff_t)len;
-    return 0;
-}
-
-static int cert_der_matches_trusted_digest(const uint8_t *cert_der, size_t cert_len, const uint8_t *expected_digest)
-{
-    uint8_t digest[SHA256_BLOCK_SIZE];
-    SHA256_CTX ctx;
-
-    sha256_init(&ctx);
-    sha256_update(&ctx, cert_der, cert_len);
-    sha256_final(&ctx, digest);
-
-
-
-    return lib_memcmp(digest, expected_digest, TRUSTED_MANAGER_DIGEST_LEN) == 0 ? 0 : -EPERM;
-}
-
-struct zip_entry_header
-{
-    uint32_t signature;
-    uint16_t version;
-    uint16_t flags;
-    uint16_t compression;
-    uint16_t mod_time;
-    uint16_t mod_date;
-    uint32_t crc32;
-    uint32_t compressed_size;
-    uint32_t uncompressed_size;
-    uint16_t file_name_length;
-    uint16_t extra_field_length;
-} __attribute__((packed));
-
-static int apk_sig_block_matches_trusted_digest(struct file *fp, uint32_t *size4, loff_t *pos, uint32_t *offset, const uint8_t *expected_digest)
-{
-    uint8_t *cert_buf;
-
-    if (read_le32(fp, pos, size4)) return 0; // signer-sequence length
-    if (read_le32(fp, pos, size4)) return 0; // signer length
-    if (read_le32(fp, pos, size4)) return 0; // signed data length
-    *offset += sizeof(*size4) * 3;
-
-    if (read_le32(fp, pos, size4)) return 0; // digests-sequence length
-    if (skip_bytes(pos, *size4)) return 0;
-    *offset += sizeof(*size4) + *size4;
-
-    if (read_le32(fp, pos, size4)) return 0; // certificates length
-    if (read_le32(fp, pos, size4)) return 0; // certificate length
-    *offset += sizeof(*size4) * 2;
-
-    if (*size4 == 0 || *size4 > APK_CERT_MAX_LENGTH) {
-        log_boot("trusted manager apk cert length invalid: %u\n", *size4);
-        return 0;
-    }
-
-    *offset += *size4;
-    cert_buf = vmalloc(*size4);
-    if (!cert_buf) {
-        return 0;
-    }
-
-    if (kernel_read(fp, cert_buf, *size4, pos) != *size4) {
-        kvfree(cert_buf);
-        return 0;
-    }
-
-    if (!cert_der_matches_trusted_digest(cert_buf, *size4, expected_digest)) {
-        kvfree(cert_buf);
-        return 2;
-    }
-
-    kvfree(cert_buf);
-    return 1;
-}
-
-static int apk_has_v1_signature_file(struct file *fp)
-{
-    static const char manifest[] = "META-INF/MANIFEST.MF";
-    struct zip_entry_header header;
-    loff_t pos = 0;
-
-    while (kernel_read(fp, &header, sizeof(header), &pos) == sizeof(header)) {
-        if (header.signature != 0x04034b50u) {
-            return 0;
-        }
-
-        if (header.file_name_length == sizeof(manifest) - 1) {
-            char file_name[sizeof(manifest)];
-            if (kernel_read(fp, file_name, header.file_name_length, &pos) != header.file_name_length) {
-                return 0;
-            }
-            file_name[header.file_name_length] = '\0';
-            if (strncmp(file_name, manifest, sizeof(manifest) - 1) == 0) {
-                return 1;
-            }
-        } else if (skip_bytes(&pos, header.file_name_length)) {
-            return 0;
-        }
-
-        if (skip_bytes(&pos, (uint64_t)header.extra_field_length + header.compressed_size)) {
-            return 0;
-        }
-    }
-
-    return 0;
-}
-
-static int apk_matches_trusted_signature(const char *path, const uint8_t *expected_digest)
-{
-    int i;
-    int rc = 0;
-    int v2_blocks = 0;
-    int v2_valid = 0;
-    int v3_present = 0;
-    int v31_present = 0;
-    uint8_t magic[APK_SIG_BLOCK_MAGIC_LEN + 1] = { 0 };
-    uint32_t size4;
-    uint64_t size8;
-    uint64_t size_of_block;
-    loff_t pos;
-    struct file *fp;
-
-    if (!path || !path[0]) return 0;
-
-    set_priv_sel_allow(current, true);
-    fp = filp_open(path, O_RDONLY | O_NOFOLLOW, 0);
-    if (!fp || IS_ERR(fp)) {
-        log_boot("trusted manager apk open failed: %s rc=%ld\n", path, PTR_ERR(fp));
-        set_priv_sel_allow(current, false);
-        return 0;
-    }
-
-    for (i = 0; i <= 0xffff; i++) {
-        unsigned short n = 0;
-        pos = vfs_llseek(fp, -i - 2, SEEK_END);
-        if (pos < 0) {
-            continue;
-        }
-        if (kernel_read(fp, &n, sizeof(n), &pos) != sizeof(n)) {
-            continue;
-        }
-        if (n == i) {
-            pos -= 22;
-            if (!read_le32(fp, &pos, &size4) && size4 == 0x06054b50u) {
-                break;
-            }
-        }
-    }
-
-    if (i > 0xffff) {
-        goto out;
-    }
-
-    pos += 12;
-    if (read_le32(fp, &pos, &size4)) {
-        goto out;
-    }
-    pos = (loff_t)size4 - 0x18;
-
-    if (read_le64(fp, &pos, &size8)) {
-        goto out;
-    }
-    if (kernel_read(fp, magic, APK_SIG_BLOCK_MAGIC_LEN, &pos) != APK_SIG_BLOCK_MAGIC_LEN) {
-        goto out;
-    }
-    if (strncmp((char *)magic, APK_SIG_BLOCK_MAGIC, APK_SIG_BLOCK_MAGIC_LEN) != 0) {
-        goto out;
-    }
-
-    pos = (loff_t)size4 - (loff_t)(size8 + 0x8);
-    if (read_le64(fp, &pos, &size_of_block)) {
-        goto out;
-    }
-    if (size_of_block != size8) {
-        goto out;
-    }
-
-    for (i = 0; i < 16; i++) {
-        uint32_t id;
-        uint32_t offset = sizeof(id);
-        if (read_le64(fp, &pos, &size8)) {
-            goto out;
-        }
-        if (size8 == size_of_block) {
-            break;
-        }
-        if (read_le32(fp, &pos, &id)) {
-            goto out;
-        }
-
-        if (id == APK_SIG_SCHEME_V2_BLOCK_ID) {
-            int match;
-            v2_blocks++;
-            match = apk_sig_block_matches_trusted_digest(fp, &size4, &pos, &offset, expected_digest);
-            if (match == 2) {
-                v2_valid = 1;
-            }
-        } else if (id == APK_SIG_SCHEME_V3_BLOCK_ID) {
-            v3_present = 1;
-        } else if (id == APK_SIG_SCHEME_V31_BLOCK_ID) {
-            v31_present = 1;
-        }
-
-        if (size8 < offset) {
-            log_boot("trusted manager apk sig block size invalid: %llu offset: %u\n", size8, offset);
-            goto out;
-        }
-        if (skip_bytes(&pos, size8 - offset)) {
-            log_boot("trusted manager apk sig block skip failed\n");
-            goto out;
-        }
-    }
-
-    if (!v2_valid) {
-        log_boot("trusted manager apk sig block invalid: v2_blocks=%d v2_valid=%d v3_present=%d v31_present=%d\n",
-                 v2_blocks, v2_valid, v3_present, v31_present);
-        goto out;
-    }
-
-    // if (apk_has_v1_signature_file(fp)) {
-    //     log_boot("trusted manager apk has v1 signature file, which is not allowed\n");
-    //     goto out;
-    // }
-
-    rc = 1;
-
-out:
-    filp_close(fp, 0);
-    set_priv_sel_allow(current, false);
-    return rc;
-}
 
 static int lookup_package_list_uid(const char *package_name, uid_t *trusted_uid_out)
 {
@@ -949,10 +671,7 @@ static int refresh_trusted_manager_uid_from_packages_list(uid_t *trusted_uid_out
     for (i = 0; trusted_managers[i].package[0] != '\0'; i++) {
         int rc;
         uid_t uid;
-
-        rc = find_trusted_manager_apk_path(
-                apk_path, PATH_MAX,
-                i);
+        rc = find_trusted_manager_apk_path(apk_path, PATH_MAX,i);
         if (rc) {
             log_boot("no apk via iterate for %s rc=%d, fallback to xml\n",
              trusted_managers[i].package, rc);
@@ -968,14 +687,6 @@ static int refresh_trusted_manager_uid_from_packages_list(uid_t *trusted_uid_out
                 continue;
             }
         }
-
-        // if (!apk_matches_trusted_signature(
-        //         apk_path, trusted_managers[i].digest)) {
-        //     log_boot("apk signature invalid: %s\n", apk_path);
-        //     continue;
-        // }
-
-
         rc = lookup_package_list_uid(
                 trusted_managers[i].package,
                 &uid);

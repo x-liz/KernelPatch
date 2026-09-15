@@ -33,7 +33,6 @@
 #include <kstorage.h>
 #include <linux/vmalloc.h>
 #include <linux/printk.h>
-#include "selinux_hide.h"
 #ifdef ANDROID
 #include <userd.h>
 #endif
@@ -46,18 +45,6 @@ extern long call_uts_set(const char __user *u_release,
                          const char __user *u_version);
 extern long call_uts_reset(void);
 
-extern long call_pathhide_add(const char __user *u_path);
-extern long call_pathhide_remove(const char __user *u_path);
-extern long call_pathhide_list(char __user *out_buf, int outlen);
-extern long call_pathhide_clear(void);
-extern long call_pathhide_enable(int enable);
-extern long call_pathhide_status(void);
-extern long call_pathhide_uid_add(int uid);
-extern long call_pathhide_uid_remove(int uid);
-extern long call_pathhide_uid_list(char __user *out_buf, int outlen);
-extern long call_pathhide_uid_clear(void);
-extern long call_pathhide_uid_mode(int enable);
-extern long call_pathhide_filter_system(int enable);
 
 extern long call_netisolate_enable(int enable);
 extern long call_netisolate_status(void);
@@ -352,10 +339,8 @@ static long supercall(int is_key_auth, long cmd, long arg1, long arg2, long arg3
         return kver;
     case SUPERCALL_BUILD_TIME:
         return call_buildtime((char *__user)arg1, (int)arg2);
-    #ifdef ANDROID
     case SUPERCALL_AP_LOAD_PACKAGE_CONFIG:
         return call_ap_load_package_config();
-    #endif
     }
 
     switch (cmd) {
@@ -398,10 +383,8 @@ static long supercall(int is_key_auth, long cmd, long arg1, long arg2, long arg3
     case SUPERCALL_KSTORAGE_REMOVE:
         return call_kstorage_remove((int)arg1, (long)arg2);
 
-#ifdef ANDROID
     case SUPERCALL_SU_GET_SAFEMODE:
         return call_su_get_safemode();
-#endif
     default:
         break;
     }
@@ -436,39 +419,7 @@ static long supercall(int is_key_auth, long cmd, long arg1, long arg2, long arg3
     case SUPERCALL_UTS_RESET:
         return call_uts_reset();
     }
-    switch (cmd){
-        case SUPERCALL_SELinux_Enable:
-            return selinux_hide_enable();
-        case SUPERCALL_SELinux_Disable:
-            return selinux_hide_disable();
-    }
 
-    switch (cmd) {
-    case SUPERCALL_PATHHIDE_ADD:
-        return call_pathhide_add((const char __user *)arg1);
-    case SUPERCALL_PATHHIDE_REMOVE:
-        return call_pathhide_remove((const char __user *)arg1);
-    case SUPERCALL_PATHHIDE_LIST:
-        return call_pathhide_list((char __user *)arg1, (int)arg2);
-    case SUPERCALL_PATHHIDE_CLEAR:
-        return call_pathhide_clear();
-    case SUPERCALL_PATHHIDE_ENABLE:
-        return call_pathhide_enable((int)arg1);
-    case SUPERCALL_PATHHIDE_STATUS:
-        return call_pathhide_status();
-    case SUPERCALL_PATHHIDE_UID_ADD:
-        return call_pathhide_uid_add((int)arg1);
-    case SUPERCALL_PATHHIDE_UID_REMOVE:
-        return call_pathhide_uid_remove((int)arg1);
-    case SUPERCALL_PATHHIDE_UID_LIST:
-        return call_pathhide_uid_list((char __user *)arg1, (int)arg2);
-    case SUPERCALL_PATHHIDE_UID_CLEAR:
-        return call_pathhide_uid_clear();
-    case SUPERCALL_PATHHIDE_UID_MODE:
-        return call_pathhide_uid_mode((int)arg1);
-    case SUPERCALL_PATHHIDE_FILTER_SYSTEM:
-        return call_pathhide_filter_system((int)arg1);
-    }
 
     switch (cmd) {
     case SUPERCALL_NETISOLATE_ENABLE:
@@ -510,10 +461,7 @@ static long supercall(int is_key_auth, long cmd, long arg1, long arg2, long arg3
 
 int is_trusted_manager_uid(uid_t uid)
 {
-    #ifdef ANDROID
     return is_trusted_manager_uid_android(uid);
-    #endif
-    return 0;
 }
 
 

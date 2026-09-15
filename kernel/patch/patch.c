@@ -11,7 +11,6 @@
 #include <module.h>
 #include <predata.h>
 #include <linux/string.h>
-#include "selinux_hide.h"
 void print_bootlog()
 {
     const char *log = get_boot_log();
@@ -53,7 +52,6 @@ void module_init();
 void syscall_init();
 int kstorage_init();
 int su_compat_init();
-int pathhide_init(void);
 int netisolate_init(void);
 
 #ifdef ANDROID
@@ -93,10 +91,6 @@ static void before_rest_init(hook_fargs4_t *args, void *udata)
     rc = resolve_pt_regs();
     log_boot("resolve_pt_regs done: %d\n", rc);
 
-    rc = selinux_hide_enable();
-    log_boot("selinux_hide_enable done: %d\n", rc);
-    // rc = pathhide_init();
-    // log_boot("pathhide_init done: %d\n", rc);
 
     // rc = netisolate_init();
     // log_boot("netisolate_init done: %d\n", rc);
