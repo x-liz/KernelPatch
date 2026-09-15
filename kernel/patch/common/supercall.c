@@ -224,7 +224,7 @@ static long call_su_allow_uid_nums()
     return su_allow_uid_nums();
 }
 
-#ifdef ANDROID
+
 extern int android_is_safe_mode;
 static long call_su_get_safemode()
 {
@@ -240,7 +240,6 @@ static long call_ap_load_package_config()
     logkfd("[call_ap_load_package_config] loaded %d entries\n", result);
     return result;
 }
-#endif
 
 static long call_su_list_allow_uid(uid_t *__user uids, int num)
 {

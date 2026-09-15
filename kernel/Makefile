@@ -36,7 +36,6 @@ BASE_SRCS += base/hmem.c
 BASE_SRCS += base/predata.c 
 BASE_SRCS += base/symbol.c 
 BASE_SRCS += base/baselib.c 
-BASE_SRCS += base/sha256.c 
 
 BASE_SRCS += $(wildcard patch/*.c)
 BASE_SRCS += $(wildcard patch/common/*.c)
