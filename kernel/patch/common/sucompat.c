@@ -44,10 +44,10 @@
 const char sh_path[] = SH_PATH;
 const char default_su_path[] = SU_PATH;
 
-#ifdef ANDROID
+
 const char legacy_su_path[] = LEGACY_SU_PATH;
 const char apd_path[] = APD_PATH;
-#endif
+
 
 static const char *current_su_path = 0;
 
@@ -307,16 +307,14 @@ static void handle_before_execve(char **__user u_filename_p, char **__user uargv
         commit_su(to_uid, sctx);
         su_audit_record(uid, __task_pid_nr_ns(current, PIDTYPE_PID, 0), __task_pid_nr_ns(current, PIDTYPE_TGID, 0), to_uid, sctx, get_task_comm(current));
 
-#ifdef ANDROID
+
         struct file *filp = filp_open(apd_path, O_RDONLY, 0);
         if (!filp || IS_ERR(filp)) {
-#endif
             void *uptr = copy_to_user_stack(sh_path, sizeof(sh_path));
             if (uptr && !IS_ERR(uptr)) {
                 *u_filename_p = (char *__user)uptr;
             }
             logkfi("call su uid: %d, to_uid: %d, sctx: %s, uptr: %llx\n", uid, to_uid, sctx, uptr);
-#ifdef ANDROID
         } else {
             filp_close(filp, 0);
 
@@ -349,7 +347,6 @@ static void handle_before_execve(char **__user u_filename_p, char **__user uargv
             }
             logkfi("call apd uid: %d, to_uid: %d, sctx: %s, cplen: %d, %d\n", uid, to_uid, sctx, cplen, argv_cplen);
         }
-#endif // ANDROID
     } else if (!strcmp(SUPERCMD, filename)) {
         void handle_supercmd(char **__user u_filename_p, char **__user uargv);
         handle_supercmd(u_filename_p, uargv);
@@ -471,14 +468,13 @@ int su_compat_init()
     audit_kstorage_gid = try_alloc_kstroage_group();
     if (audit_kstorage_gid != KSTORAGE_SU_AUDIT_GROUP) return -ENOMEM;
 
-#ifdef ANDROID
+
     // default shell
     if (!all_allow_sctx[0]) {
         strcpy(all_allow_sctx, ALL_ALLOW_SCONTEXT_MAGISK);
     }
     su_add_allow_uid(2000, 0, all_allow_sctx);
     su_add_allow_uid(0, 0, all_allow_sctx);
-#endif
 
     hook_err_t rc = HOOK_NO_ERR;
 

@@ -32,7 +32,7 @@ enum
     EXIT_ENOENT = 127 /* Could not find program to exec.  */
 };
 
-#ifdef ANDROID
+
 #define DEFAULT_SHELL "/system/bin/sh"
 #define DEFAULT_PATH "/product/bin:/apex/com.android.runtime/bin:/system/bin:/odm/bin:/vendor/bin:/usr/bin"
 #define DEFAULT_ROOT_PATH \
@@ -40,11 +40,7 @@ enum
     ":" ADB_DIR           \
     ":/sbin:/system/sbin:/product/bin:/apex/com.android.runtime/bin:/system/bin:/system/xbin:/odm/bin:/vendor/bin:/vendor/xbin:/usr/bin:/user/sbin"
 
-#else
-#define DEFAULT_SHELL "/bin/sh"
-#define DEFAULT_PATH ":/bin:/usr/bin"
-#define DEFAULT_ROOT_PATH ":/usr/ucb:/bin:/usr/bin:/etc"
-#endif
+
 
 #define DEFAULT_USER "root"
 #define PROGRAM_NAME "su"

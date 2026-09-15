@@ -12,8 +12,6 @@ int report_user_event(const char *event, const char *args)
 {
     const char *safe_event = event ? event : "";
     const char *safe_args = args ? args : "";
-
-    #ifdef ANDROID
     if (lib_strcmp(safe_event, "post-fs-data") == 0) {
         log_boot("post-fs-data: loading ap package config ...\n");
         load_ap_package_config();
@@ -25,7 +23,6 @@ int report_user_event(const char *event, const char *args)
         int trust_rc = refresh_trusted_manager_state();
         log_boot("boot-completed: trusted manager refresh rc=%d\n", trust_rc);
     }
-    #endif
     logki("user report event: %s, args: %s\n", safe_event, safe_args);
     return 0;
 }

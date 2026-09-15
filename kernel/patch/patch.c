@@ -54,10 +54,10 @@ int kstorage_init();
 int su_compat_init();
 int netisolate_init(void);
 
-#ifdef ANDROID
+
 int android_user_init();
 int android_sepolicy_flags_fix();
-#endif
+
 
 static void before_rest_init(hook_fargs4_t *args, void *udata)
 {
@@ -95,13 +95,13 @@ static void before_rest_init(hook_fargs4_t *args, void *udata)
     // rc = netisolate_init();
     // log_boot("netisolate_init done: %d\n", rc);
 
-#ifdef ANDROID
+
     rc = android_sepolicy_flags_fix();
     log_boot("android_sepolicy_flags_fix done: %d\n", rc);
 
     rc = android_user_init();
     log_boot("android_user_init done: %d\n", rc);
-#endif
+
 
 out:
     return;

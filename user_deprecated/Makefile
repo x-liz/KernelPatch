@@ -1,17 +1,15 @@
 
 CFLAGS = -std=c11 -Wall -Wextra -Wno-unused -Wno-unused-parameter
 
-ifdef ANDROID
-	CFLAGS += -DANDROID
-endif
+CFLAGS += -DANDROID
+
 
 SRC += kpatch.c
 SRC += kpm.c
 SRC += su.c
 
-ifdef ANDROID
 SRCS += $(wildcard android/*.c)
-endif
+
 
 OBJS := $(SRCS:.c=.o)
 

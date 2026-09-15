@@ -17,9 +17,7 @@
 #include <module.h>
 #include <user_event.h>
 #include <log.h>
-#ifdef ANDROID
 #include <userd.h>
-#endif
 
 static char *__user supercmd_str_to_user_sp(const char *data, uintptr_t *sp)
 {
@@ -87,10 +85,8 @@ static const char supercmd_help[] =
     "      profile <UID>                    Get the profile of the uid configuration.\n"
     "      path [PATH]                      Get or Reset current su path. The length of PATH must 2-127.\n"
     "      sctx [SCONTEXT]                  Get or Reset current all allowed security context.\n"
-#ifdef ANDROID
     "      exclude_list                     List all exclude UIDs.\n"
     "      exclude <UID> [1|0]              Get or Reset exclude policy for UID.\n"
-#endif
     "  event <EVENT>                        Report EVENT.\n"
     "\n"
     "The command below requires superkey authentication.\n"
@@ -189,7 +185,6 @@ static void handle_cmd_sumgr(char **__user u_filename_p, const char **carr, char
             cmd_res->msg = all_allow_sctx;
         }
     }
-#ifdef ANDROID
     else if (!strcmp(sub_cmd, "exclude")) {
         unsigned long long uid;
         if (!carr[2] || kstrtoull(carr[2], 10, &uid)) {
@@ -225,7 +220,6 @@ static void handle_cmd_sumgr(char **__user u_filename_p, const char **carr, char
             cmd_res->msg = buffer;
         }
     }
-#endif
     else {
         cmd_res->err_msg = "invalid subcommand";
     }
@@ -460,14 +454,12 @@ void handle_supercmd(char **__user u_filename_p, char **__user uargv)
     } else if (!strcmp("buildtime", cmd)) {
         cmd_res.msg = get_build_time();
         goto echo;
-    #ifdef ANDROID
     } else if (!strcmp("reload-cfg", cmd)) {
         int trust_rc = refresh_trusted_manager_state();
         int config_rc = load_ap_package_config();
         log_boot("reload-cfg: refresh rc=%d package_config rc=%d\n", trust_rc, config_rc);
         cmd_res.msg = "reload package config success";
         goto echo;
-    #endif
     } else if (!strcmp("sumgr", cmd)) {
         handle_cmd_sumgr(u_filename_p, carr, buffer, sizeof(buffer), &cmd_res);
     } else if (!strcmp("event", cmd)) {

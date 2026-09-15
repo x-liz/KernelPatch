@@ -18,10 +18,10 @@
 #include "su.h"
 #include "kpm.h"
 
-#ifdef ANDROID
+
 #include "android/sumgr.h"
 #include "android/android_user.h"
-#endif
+
 
 char program_name[128] = { '\0' };
 const char *key = NULL;
@@ -50,9 +50,9 @@ static void usage(int status)
                 "key         Manager the superkey.\n"
                 "su          KernelPatch Substitute User.\n"
                 "kpm         KernelPatch Module manager.\n"
-#ifdef ANDROID
+
                 "sumgr       SU permission manager for Android.\n"
-#endif
+
                 "\n",
                 SUPERCALL_HELLO_ECHO);
     }
@@ -107,10 +107,10 @@ int main(int argc, char **argv)
         { "-h", 'h' },
         { "--version", 'v' },
         { "-v", 'v' },
-#ifdef ANDROID
+
         { "sumgr", 'm' },
         { "android_user", 'a' },
-#endif
+
     };
 
     for (int i = 0; i < sizeof(cmd_arr) / sizeof(cmd_arr[0]); i++) {
@@ -157,13 +157,13 @@ int main(int argc, char **argv)
         fprintf(stdout, "%x\n", version());
         break;
 
-#ifdef ANDROID
+
     case 'm':
         strcat(program_name, " sumgr");
         return sumgr_main(argc - 2, argv + 2);
     case 'a':
         return android_user(argc - 2, argv + 2);
-#endif
+
 
     default:
         fprintf(stderr, "Invalid command: %s!\n", scmd);

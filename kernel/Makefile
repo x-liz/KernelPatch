@@ -16,9 +16,9 @@ ifdef DEBUG
 	CFLAGS += -DDEBUG -DMAP_DEBUG -g
 endif
 
-ifdef ANDROID
-	CFLAGS += -DANDROID
-endif
+
+CFLAGS += -DANDROID
+
 
 INCLUDE := -I. -Iinclude -Ipatch/include -Ilinux -Ilinux/include -Ilinux/arch/arm64/include -Ilinux/tools/arch/arm64/include
 
