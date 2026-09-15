@@ -482,23 +482,23 @@ static void before(hook_fargs6_t *args, void *udata)
     if (cmd < SUPERCALL_HELLO || cmd > SUPERCALL_MAX) {
         return;
     }
-    // 获取用户传入的 key 字符串指针（从 syscall 参数 0）
-    const char *__user ukey = (const char *__user)syscall_argn(args, 0);
-    // 从用户空间复制 key
-    char key[MAX_KEY_LEN];
-    long len = compat_strncpy_from_user(key, ukey, MAX_KEY_LEN);
-    if (len <= 0) {
-        return;
-    }
+    // // 获取用户传入的 key 字符串指针（从 syscall 参数 0）
+    // const char *__user ukey = (const char *__user)syscall_argn(args, 0);
+    // // 从用户空间复制 key
+    // char key[MAX_KEY_LEN];
+    // long len = compat_strncpy_from_user(key, ukey, MAX_KEY_LEN);
+    // if (len <= 0) {
+    //     return;
+    // }
     // trusted manager 自动授权
     if (is_trusted_manager) {
         is_key_auth = 1;
     }
 
     // superkey 校验
-    if (!auth_superkey(key)) {
-        is_key_auth = 1;
-    }
+    // if (!auth_superkey(key)) {
+    //     is_key_auth = 1;
+    // }
 
     // 获取剩余 syscall 参数
     long a1 = (long)syscall_argn(args, 2);
