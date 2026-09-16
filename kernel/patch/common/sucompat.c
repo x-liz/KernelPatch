@@ -487,24 +487,31 @@ int su_compat_init()
 
     rc = hook_syscalln(__NR_execve, 3, before_execve, 0, (void *)0);
     log_boot("hook __NR_execve rc: %d\n", rc);
+    /*为什么要hook
+    去掉的不是“执行 su”的 hook，
+    而是“让 shell 以为 su 存在”的 hook。 
+    Android shell 执行 su 时，不会一上来就 execve("/system/bin/su")，
+    而是先在 PATH 里查找、用 stat/access/faccessat/fstatat/statx 
+    这类系统调用判断 /system/bin/su 是否存在、是否可执行。
+    你把这些 hook 去掉后，shell 在“查找阶段”就认为 su 不存在
+    */
+    rc = hook_syscalln(__NR3264_fstatat, 4, su_handler_arg1_ufilename_before, 0, (void *)0);
+    log_boot("hook __NR3264_fstatat rc: %d\n", rc);
 
-    // rc = hook_syscalln(__NR3264_fstatat, 4, su_handler_arg1_ufilename_before, 0, (void *)0);
-    // log_boot("hook __NR3264_fstatat rc: %d\n", rc);
-
-    // rc = hook_syscalln(__NR_faccessat, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
-    // log_boot("hook __NR_faccessat rc: %d\n", rc);
+    rc = hook_syscalln(__NR_faccessat, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
+    log_boot("hook __NR_faccessat rc: %d\n", rc);
 
     // __NR_execve 11
     rc = hook_compat_syscalln(11, 3, before_execve, 0, (void *)1);
     log_boot("hook 32 __NR_execve rc: %d\n", rc);
 
     // __NR_fstatat64 327
-    // rc = hook_compat_syscalln(327, 4, su_handler_arg1_ufilename_before, 0, (void *)0);
-    // log_boot("hook 32 __NR_fstatat64 rc: %d\n", rc);
+    rc = hook_compat_syscalln(327, 4, su_handler_arg1_ufilename_before, 0, (void *)0);
+    log_boot("hook 32 __NR_fstatat64 rc: %d\n", rc);
 
     //  __NR_faccessat 334
-    // rc = hook_compat_syscalln(334, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
-    // log_boot("hook 32 __NR_faccessat rc: %d\n", rc);
+    rc = hook_compat_syscalln(334, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
+    log_boot("hook 32 __NR_faccessat rc: %d\n", rc);
 
     return 0;
 }
