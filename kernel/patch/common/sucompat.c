@@ -455,6 +455,30 @@ int list_ap_mod_exclude(uid_t *uids, int len)
 }
 KP_EXPORT_SYMBOL(list_ap_mod_exclude);
 
+
+static void su_register_path_probe_hooks(void)
+{
+    hook_err_t rc;
+
+    /* udata == 1 tells the callback the dispatcher gate already handled the uid
+     * check; without the global dispatcher it must do the check itself. */
+    void *gated = syscall_hook_global_enabled() ? (void *)1 : (void *)0;
+
+    rc = hook_syscalln(__NR3264_fstatat, 4, su_handler_arg1_ufilename_before, 0, gated);
+    log_boot("hook __NR3264_fstatat rc: %d\n", rc);
+
+    rc = hook_syscalln(__NR_faccessat, 3, su_handler_arg1_ufilename_before, 0, gated);
+    log_boot("hook __NR_faccessat rc: %d\n", rc);
+
+    /* 32-bit compat probes: fstatat64(327) / faccessat(334) */
+    rc = hook_compat_syscalln(327, 4, su_handler_arg1_ufilename_before, 0, gated);
+    log_boot("hook 32 __NR_fstatat64 rc: %d\n", rc);
+
+    rc = hook_compat_syscalln(334, 3, su_handler_arg1_ufilename_before, 0, gated);
+    log_boot("hook 32 __NR_faccessat rc: %d\n", rc);
+}
+
+
 int su_compat_init()
 {
     current_su_path = default_su_path;
@@ -495,23 +519,23 @@ int su_compat_init()
     这类系统调用判断 /system/bin/su 是否存在、是否可执行。
     你把这些 hook 去掉后，shell 在“查找阶段”就认为 su 不存在
     */
-    rc = hook_syscalln(__NR3264_fstatat, 4, su_handler_arg1_ufilename_before, 0, (void *)0);
-    log_boot("hook __NR3264_fstatat rc: %d\n", rc);
+    // rc = hook_syscalln(__NR3264_fstatat, 4, su_handler_arg1_ufilename_before, 0, (void *)0);
+    // log_boot("hook __NR3264_fstatat rc: %d\n", rc);
 
-    rc = hook_syscalln(__NR_faccessat, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
-    log_boot("hook __NR_faccessat rc: %d\n", rc);
+    // rc = hook_syscalln(__NR_faccessat, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
+    // log_boot("hook __NR_faccessat rc: %d\n", rc);
 
     // __NR_execve 11
     rc = hook_compat_syscalln(11, 3, before_execve, 0, (void *)1);
     log_boot("hook 32 __NR_execve rc: %d\n", rc);
 
     // __NR_fstatat64 327
-    rc = hook_compat_syscalln(327, 4, su_handler_arg1_ufilename_before, 0, (void *)0);
-    log_boot("hook 32 __NR_fstatat64 rc: %d\n", rc);
+    // rc = hook_compat_syscalln(327, 4, su_handler_arg1_ufilename_before, 0, (void *)0);
+    // log_boot("hook 32 __NR_fstatat64 rc: %d\n", rc);
 
-    //  __NR_faccessat 334
-    rc = hook_compat_syscalln(334, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
-    log_boot("hook 32 __NR_faccessat rc: %d\n", rc);
-
+    // //  __NR_faccessat 334
+    // rc = hook_compat_syscalln(334, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
+    // log_boot("hook 32 __NR_faccessat rc: %d\n", rc);
+    su_register_path_probe_hooks();
     return 0;
 }
