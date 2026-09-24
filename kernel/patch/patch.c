@@ -69,11 +69,7 @@ static void before_rest_init(hook_fargs4_t *args, void *udata)
 
     if ((rc = bypass_kcfi())) goto out;
     log_boot("bypass_kcfi done: %d\n", rc);
-    
-    /* Must precede supercall_install/su_compat_init so their hook_syscalln
-     * calls register with the dispatcher instead of patching the table. */
-    syscall_dispatch_init();
-    
+
     if ((rc = resolve_struct())) goto out;
     log_boot("resolve_struct done: %d\n", rc);
 

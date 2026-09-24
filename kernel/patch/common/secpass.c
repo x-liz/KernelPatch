@@ -12,7 +12,7 @@
 #include <predata.h>
 
 struct pt_regs;
-int cfi_bypass = 0;
+
 static inline bool should_cfi_pass(unsigned long target)
 {
     return is_kp_text_area(target) || is_kp_hook_area(target) || is_kpm_rox_area(target);
@@ -82,7 +82,7 @@ int bypass_kcfi()
         // not error
         log_boot("no symbol for pass kcfi\n");
     }
-    cfi_bypass = 1;
+
 out:
     return rc;
 }
