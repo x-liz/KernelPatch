@@ -24,7 +24,12 @@
 #define bits(n, high, low) (((n) << (63u - (high))) >> (63u - (high) + (low)))
 #define align_floor(x, align) ((uint64_t)(x) & ~((uint64_t)(align) - 1))
 #define align_ceil(x, align) (((uint64_t)(x) + (uint64_t)(align) - 1) & ~((uint64_t)(align) - 1))
-
+extern int cfi_bypass;
+struct suffix_lookup
+{
+    const char *base;
+    unsigned long addr;
+};
 start_preset_t start_preset __attribute__((section(".start.data")));
 
 setup_header_t *setup_header = 0;
@@ -201,6 +206,61 @@ uint64_t pgtable_phys(uint64_t pgd, uint64_t va)
     return pxd_pa ? pxd_pa + (va & (page_size - 1)) : 0;
 }
 KP_EXPORT_SYMBOL(pgtable_phys);
+
+static bool suffix_contains_cfi(const char *suffix)
+{
+    size_t i;
+
+    for (i = 0; suffix[i]; i++) {
+        if (suffix[i] == 'c' && suffix[i + 1] == 'f' && suffix[i + 2] == 'i' &&
+            (i == 0 || suffix[i - 1] == '.' || suffix[i - 1] == '$') &&
+            (!suffix[i + 3] || suffix[i + 3] == '.' || suffix[i + 3] == '$'))
+            return true;
+    }
+    return false;
+}
+
+static bool symbol_has_compiler_suffix(const char *name, const char *base)
+{
+    size_t i;
+
+    for (i = 0; base[i]; i++) {
+        if (name[i] != base[i]) return false;
+    }
+    if (!(name[i] == '.' || name[i] == '$') || !name[i + 1]) return false;
+    if (suffix_contains_cfi(name + i + 1)) return false; /* skip .cfi_jt stubs */
+    return true;
+}
+
+static int lookup_suffix_cb(void *data, const char *name, struct module *module, unsigned long addr)
+{
+    struct suffix_lookup *lookup = data;
+
+    (void)module;
+    if (!lookup || lookup->addr || !addr) return 0;
+    if (!symbol_has_compiler_suffix(name, lookup->base)) return 0;
+    lookup->addr = addr;
+    return 1;
+}
+
+unsigned long kallsyms_lookup_name_by_suffix(const char *name){
+
+
+    unsigned long addr = kallsyms_lookup_name(name);
+    if (addr) return addr;
+    if (!kallsyms_on_each_symbol) return 0;
+    if (!cfi_bypass) return 0;
+    struct suffix_lookup lookup;
+
+    lookup.base = name;
+    lookup.addr = 0;
+
+    kallsyms_on_each_symbol(lookup_suffix_cb, &lookup);
+
+    return lookup.addr;
+
+}
+KP_EXPORT_SYMBOL(kallsyms_lookup_name_by_suffix);
 
 static void prot_myself()
 {
