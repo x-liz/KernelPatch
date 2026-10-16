@@ -513,7 +513,7 @@ int su_compat_init()
     rc = hook_compat_syscalln(334, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
     log_boot("hook 32 __NR_faccessat rc: %d\n", rc);
 
-    rc = hook_syscalln(332, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
+    rc = hook_syscalln(291, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
     log_boot("hook 32 __NR_statx rc: %d\n", rc);
 
     return 0;
