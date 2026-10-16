@@ -322,7 +322,7 @@ static long call_kstorage_remove(int gid, long did)
     return remove_kstorage(gid, did);
 }
 
-static long supercall(int is_key_auth, long cmd, long arg1, long arg2, long arg3, long arg4)
+static long supercall(long cmd, long arg1, long arg2, long arg3, long arg4)
 {
     switch (cmd) {
     case SUPERCALL_HELLO:
@@ -397,7 +397,6 @@ static long supercall(int is_key_auth, long cmd, long arg1, long arg2, long arg3
         break;
     }
 
-    if (!is_key_auth) return -EPERM;
 
     switch (cmd) {
     case SUPERCALL_SKEY_GET:
@@ -466,7 +465,6 @@ static void before(hook_fargs6_t *args, void *udata)
 {
     uid_t uid = current_uid();
     // 授权状态标记
-    int is_key_auth = 0;
     int is_trusted_manager = 0;
     int is_su_allow = 0;
     // 检查当前 uid 是否是受信任的管理者
@@ -491,7 +489,7 @@ static void before(hook_fargs6_t *args, void *udata)
     //     return;
     // }
     // trusted manager 自动授权
-    is_key_auth = 1;
+    // is_key_auth = 1;
     // if (is_trusted_manager) {
     //     is_key_auth = 1;
     // }
@@ -509,7 +507,7 @@ static void before(hook_fargs6_t *args, void *udata)
     // 跳过原始 syscall
     args->skip_origin = 1;
     // 调用 supercall
-    args->ret = supercall(is_key_auth, cmd, a1, a2, a3, a4);
+    args->ret = supercall(cmd, a1, a2, a3, a4);
 }
 
 int supercall_install()
