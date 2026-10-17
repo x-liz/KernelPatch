@@ -16,8 +16,6 @@
 #include "uapi/scdefs.h"
 #include "version"
 
-#define __NR_supercall 283
-
 /// KernelPatch version is greater than or equal to 0x0a05
 static inline long ver_and_cmd(const char *key, long cmd)
 {

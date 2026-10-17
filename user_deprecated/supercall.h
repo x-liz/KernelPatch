@@ -16,8 +16,6 @@
 #include "uapi/scdefs.h"
 #include "../version"
 
-#define __NR_supercall 283
-
 /// @deprecated
 /// KernelPatch version less than 0xa05
 static inline long hash_key_cmd(const char *key, long cmd)
