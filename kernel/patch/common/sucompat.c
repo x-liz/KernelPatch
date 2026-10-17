@@ -501,8 +501,13 @@ int su_compat_init()
     rc = hook_syscalln(__NR_faccessat, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
     log_boot("hook __NR_faccessat rc: %d\n", rc);
 
+    //春秋侧信道
     rc = hook_syscalln(__NR_statx, 5, su_handler_arg1_ufilename_before, 0, (void *)0);
     log_boot("hook __NR_statx rc: %d\n", rc);
+
+    //hunter侧信道
+    rc = hook_syscalln(__NR_unlinkat, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
+    log_boot("hook __NR_faccessat rc: %d\n", rc);
 
     // __NR_execve 11
     rc = hook_compat_syscalln(11, 3, before_execve, 0, (void *)1);
@@ -516,8 +521,13 @@ int su_compat_init()
     rc = hook_compat_syscalln(334, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
     log_boot("hook 32 __NR_faccessat rc: %d\n", rc);
 
-    rc = hook_syscalln(291, 5, su_handler_arg1_ufilename_before, 0, (void *)0);
+    rc = hook_compat_syscalln(291, 5, su_handler_arg1_ufilename_before, 0, (void *)0);
     log_boot("hook 32 __NR_statx rc: %d\n", rc);
+    //hunter 侧信道检测 
+    //ratio0 = (faccess - timer) / (unlink - timer)
+    //ratio1 = (fstat   - timer) / (unlink - timer)
+    rc = hook_compat_syscalln(35, 3, su_handler_arg1_ufilename_before, 0, (void *)0);
+    log_boot("hook 64 __NR_unlinkat rc: %d\n", rc);
 
     return 0;
 }
