@@ -463,6 +463,7 @@ int is_trusted_manager_uid(uid_t uid)
 
 static void before(hook_fargs6_t *args, void *udata)
 {
+    
     uid_t uid = current_uid();
     // 授权状态标记
     int is_trusted_manager = 0;
@@ -470,6 +471,7 @@ static void before(hook_fargs6_t *args, void *udata)
     // 检查当前 uid 是否是受信任的管理者
     is_trusted_manager = is_trusted_manager_uid(uid);
     is_su_allow = is_su_allow_uid(uid);
+    pr_info("__NR_supercall ml:%lx",syscall_argn(args, 1));
     if (!is_su_allow && !is_trusted_manager){return;}
     // 获取用户传入的 supercall 命令参数（参数 1）
     long ver_xx_cmd = (long)syscall_argn(args, 1);
