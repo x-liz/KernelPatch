@@ -16,6 +16,8 @@
 
 #include "uapi/scdefs.h"
 
+#define __NR_supercall 283
+
 static inline long ver_and_cmd(const char *key, long cmd)
 {
     uint32_t version_code = (MAJOR << 16) + (MINOR << 8) + PATCH;
